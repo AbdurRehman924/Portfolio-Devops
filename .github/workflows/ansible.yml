@@ -1,0 +1,63 @@
+name: Configure Infrastructure with Ansible
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_host:
+        description: 'Target host IP address'
+        required: true
+        type: string
+  push:
+    branches: [main]
+    paths: ['ansible/**']
+
+jobs:
+  configure:
+    name: Configure Bastion Host
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install Ansible
+      run: |
+        python -m pip install --upgrade pip
+        pip install ansible
+    
+    - name: Setup SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ github.event.inputs.target_host || secrets.BASTION_IP }} >> ~/.ssh/known_hosts
+    
+    - name: Update inventory
+      run: |
+        sed -i "s/<BASTION_IP>/${{ github.event.inputs.target_host || secrets.BASTION_IP }}/g" ansible/inventory.ini
+    
+    - name: Run Ansible playbook
+      run: |
+        ansible-playbook -i ansible/inventory.ini ansible/playbook.yml -v
+      env:
+        ANSIBLE_HOST_KEY_CHECKING: False
+    
+    - name: Verify configuration
+      run: |
+        ansible bastion -i ansible/inventory.ini -m shell -a "docker --version"
+        ansible bastion -i ansible/inventory.ini -m shell -a "kubectl version --client"
+        ansible bastion -i ansible/inventory.ini -m shell -a "az version"
+    
+    - name: Output configuration info
+      run: |
+        echo "## Bastion Host Configured" >> $GITHUB_STEP_SUMMARY
+        echo "- Host: ${{ github.event.inputs.target_host || secrets.BASTION_IP }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Docker: Installed" >> $GITHUB_STEP_SUMMARY
+        echo "- kubectl: Installed" >> $GITHUB_STEP_SUMMARY
+        echo "- Azure CLI: Installed" >> $GITHUB_STEP_SUMMARY
+        echo "- Node Exporter: Running" >> $GITHUB_STEP_SUMMARY
