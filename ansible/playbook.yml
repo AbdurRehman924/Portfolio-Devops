@@ -1,0 +1,20 @@
+---
+- name: Configure bastion host
+  hosts: bastion
+  become: yes
+  tasks:
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Install kubectl
+      get_url:
+        url: https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+
+    - name: Install Azure CLI
+      shell: |
+        curl -sL https://aka.ms/InstallAzureCLIDeb | bash
