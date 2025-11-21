@@ -1,0 +1,25 @@
+name: Kubernetes Deploy
+
+on:
+  push:
+    branches: [ main ]
+    paths: ['kubernetes/**']
+  pull_request:
+    branches: [ main ]
+    paths: ['kubernetes/**']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v3
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Deploy to AKS
+      run: |
+        az aks get-credentials --resource-group rg-portfolio-dev --name aks-portfolio-dev
+        kubectl apply -f kubernetes/
