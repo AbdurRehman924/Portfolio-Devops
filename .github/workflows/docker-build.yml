@@ -1,0 +1,23 @@
+name: Docker Build
+
+on:
+  push:
+    branches: [ main ]
+    paths: ['docker/**']
+  pull_request:
+    branches: [ main ]
+    paths: ['docker/**']
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Build and push Docker image
+      run: |
+        az acr build --registry acrportfoliodev --image portfolio:${{ github.sha }} .
